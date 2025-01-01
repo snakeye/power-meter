@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "power-meter")(type "KiCad")(uri "${KIPRJMOD}/power-meter.kicad_sym")(options "")(descr ""))
+)
