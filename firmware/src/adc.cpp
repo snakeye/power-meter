@@ -13,7 +13,7 @@ ADS1220_WE ads = ADS1220_WE(&adsSPI, PIN_CS, PIN_DRDY);
 //
 uint32_t tsStart = 0;
 
-volatile uint64_t tsLastMeasurement = 0;
+volatile uint32_t tsLastMeasurement = 0;
 volatile int64_t measurements[measurements_buffer_size] = {0};
 volatile uint32_t intervals[measurements_buffer_size] = {0};
 
@@ -36,7 +36,7 @@ void onAdcDataReadyInterrupt()
     measurements[last_measurement_idx] = current;
 
     // get time interval between measurements
-    uint64_t now = get64bitMicros();
+    uint32_t now = micros();
     uint32_t tsDiff = now - tsLastMeasurement;
 
     intervals[last_measurement_idx] = tsDiff;
@@ -84,7 +84,7 @@ void adcConfig()
 void adcResetData()
 {
     uint32_t nowMs = millis();
-    uint64_t nowUs = get64bitMicros();
+    uint32_t nowUs = micros();
 
     noInterrupts();
 
