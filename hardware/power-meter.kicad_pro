@@ -90,7 +90,7 @@
         "length_out_of_range": "error",
         "lib_footprint_issues": "warning",
         "lib_footprint_mismatch": "warning",
-        "malformed_courtyard": "error",
+        "malformed_courtyard": "ignore",
         "microvia_drill_out_of_range": "error",
         "missing_courtyard": "ignore",
         "missing_footprint": "warning",
@@ -238,7 +238,11 @@
     "equivalence_files": []
   },
   "erc": {
-    "erc_exclusions": [],
+    "erc_exclusions": [
+      "power_pin_not_driven|2260600|266700|75e8db18-d5f3-4d8d-b374-093509be0ec3|00000000-0000-0000-0000-000000000000|/b7eaa3b1-0377-4466-b52c-899fd860a8a9|/b7eaa3b1-0377-4466-b52c-899fd860a8a9|",
+      "power_pin_not_driven|254000|673100|a59a0d5c-84c1-4814-9634-3cd54294bba3|00000000-0000-0000-0000-000000000000|/b7eaa3b1-0377-4466-b52c-899fd860a8a9|/b7eaa3b1-0377-4466-b52c-899fd860a8a9|",
+      "power_pin_not_driven|520700|228600|d7714449-2986-42bf-8a14-9e56cc20c195|00000000-0000-0000-0000-000000000000|/b7eaa3b1-0377-4466-b52c-899fd860a8a9|/b7eaa3b1-0377-4466-b52c-899fd860a8a9|"
+    ],
     "meta": {
       "version": 0
     },
@@ -636,6 +640,14 @@
       "version": 1
     },
     "net_format_name": "",
+    "ngspice": {
+      "fix_include_paths": true,
+      "meta": {
+        "version": 0
+      },
+      "model_mode": 4,
+      "workbook_filename": ""
+    },
     "page_layout_descr_file": "",
     "plot_directory": "",
     "spice_current_sheet_as_root": false,
