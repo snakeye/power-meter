@@ -46,8 +46,8 @@ void onAdcDataReadyInterrupt()
     measurements_count += 1;
     tsLastMeasurement = now;
 
-    //
-    totalCharge += tsDiff != 0 ? current / tsDiff : 0;
+    // accumulate charge in uA*us
+    totalCharge += uint64_t(current) * uint64_t(tsDiff);
 }
 
 bool adcInit()

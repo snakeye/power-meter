@@ -59,7 +59,8 @@ void displayUpdate()
     //
 
     u8g2.setCursor(0, 48);
-    u8g2.printf("%d mAh", totalCharge / (3600 * 1000));
+    uint32_t mAh = (uint32_t)(totalCharge / 3600000000000ULL);
+    u8g2.printf("%lu mAh", (unsigned long)mAh);
 
     //
     u8g2.setCursor(0, 64);
