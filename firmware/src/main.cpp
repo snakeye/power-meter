@@ -71,5 +71,7 @@ void loop()
     btnA.tick();
     btnB.tick();
 
+    adcProcessPendingData();
+
     RecurringTask::interval(100, displayUpdate);
 }

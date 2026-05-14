@@ -16,5 +16,6 @@ extern uint32_t tsStart;
 
 bool adcInit();
 void adcConfig();
+void adcProcessPendingData();
 void adcResetData();
 bool adcCalibrateZeroOffset(uint16_t sampleCount = 128);

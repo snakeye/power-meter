@@ -20,34 +20,50 @@ volatile uint32_t intervals[measurements_buffer_size] = {0};
 volatile uint32_t last_measurement_idx = 0;
 volatile uint32_t measurements_count = 0;
 volatile uint64_t totalCharge = 0;
+volatile uint32_t pendingDrdyCount = 0;
 
 /**
  * ADC data ready interrup handler
  */
 void onAdcDataReadyInterrupt()
 {
-    // get ADC reading
-    int32_t adcValue = ads.getRawData() - config.adcZeroOffset;
-    if (adcValue < 0)
-        adcValue = 0;
+    pendingDrdyCount += 1;
+}
 
-    int64_t current = convertRawToCurrent_uA(adcValue);
+void adcProcessPendingData()
+{
+    constexpr uint32_t maxSamplesPerLoop = 4;
 
-    measurements[last_measurement_idx] = current;
+    for (uint32_t i = 0; i < maxSamplesPerLoop; i++)
+    {
+        noInterrupts();
+        if (pendingDrdyCount == 0)
+        {
+            interrupts();
+            break;
+        }
+        pendingDrdyCount -= 1;
+        interrupts();
 
-    // get time interval between measurements
-    uint32_t now = micros();
-    uint32_t tsDiff = now - tsLastMeasurement;
+        int32_t adcValue = ads.getRawData() - config.adcZeroOffset;
+        if (adcValue < 0)
+            adcValue = 0;
 
-    intervals[last_measurement_idx] = tsDiff;
+        int64_t current = convertRawToCurrent_uA(adcValue);
 
-    // update counters
-    last_measurement_idx = (last_measurement_idx + 1) % measurements_buffer_size;
-    measurements_count += 1;
-    tsLastMeasurement = now;
+        measurements[last_measurement_idx] = current;
 
-    // accumulate charge in uA*us
-    totalCharge += uint64_t(current) * uint64_t(tsDiff);
+        uint32_t now = micros();
+        uint32_t tsDiff = now - tsLastMeasurement;
+
+        intervals[last_measurement_idx] = tsDiff;
+
+        last_measurement_idx = (last_measurement_idx + 1) % measurements_buffer_size;
+        measurements_count += 1;
+        tsLastMeasurement = now;
+
+        totalCharge += uint64_t(current) * uint64_t(tsDiff);
+    }
 }
 
 bool adcInit()
@@ -97,6 +113,7 @@ void adcResetData()
 
     last_measurement_idx = 0;
     measurements_count = 0;
+    pendingDrdyCount = 0;
 
     tsLastMeasurement = nowUs;
 
