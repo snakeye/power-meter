@@ -7,6 +7,7 @@ Config config = {
     .referenceVoltage = 2048,
     .adcZeroOffset = 5600,
     .adcGain = 1,
+    .adcRateMode = 1,
 };
 
 namespace
@@ -15,7 +16,7 @@ namespace
     constexpr uint16_t eepromSize = 256;
     constexpr uint8_t eepromPageSize = 8;
     constexpr uint32_t configMagic = 0x504D4346; // PMCF
-    constexpr uint16_t configVersion = 1;
+    constexpr uint16_t configVersion = 2;
 
     struct ConfigBlock
     {
@@ -23,6 +24,22 @@ namespace
         uint16_t version;
         uint16_t reserved;
         Config config;
+        uint32_t crc;
+    };
+
+    struct ConfigV1
+    {
+        int32_t referenceVoltage;
+        int32_t adcZeroOffset;
+        int32_t adcGain;
+    };
+
+    struct ConfigBlockV1
+    {
+        uint32_t magic;
+        uint16_t version;
+        uint16_t reserved;
+        ConfigV1 config;
         uint32_t crc;
     };
 
@@ -133,7 +150,8 @@ namespace
     {
         return c.referenceVoltage >= 1800 && c.referenceVoltage <= 2500 &&
                c.adcGain > 0 && c.adcGain <= 1000 &&
-               c.adcZeroOffset >= -2000000 && c.adcZeroOffset <= 2000000;
+               c.adcZeroOffset >= -2000000 && c.adcZeroOffset <= 2000000 &&
+               c.adcRateMode <= 2;
     }
 }
 
@@ -145,24 +163,58 @@ bool loadConfig()
         return false;
     }
 
-    if (block.magic != configMagic || block.version != configVersion)
+    if (block.magic != configMagic)
     {
         return false;
     }
 
-    uint32_t expectedCrc = crc32(reinterpret_cast<const uint8_t *>(&block), sizeof(block) - sizeof(block.crc));
-    if (expectedCrc != block.crc)
+    if (block.version == configVersion)
     {
-        return false;
+        uint32_t expectedCrc = crc32(reinterpret_cast<const uint8_t *>(&block), sizeof(block) - sizeof(block.crc));
+        if (expectedCrc != block.crc)
+        {
+            return false;
+        }
+
+        if (!validateConfigRange(block.config))
+        {
+            return false;
+        }
+
+        config = block.config;
+        return true;
     }
 
-    if (!validateConfigRange(block.config))
+    if (block.version == 1)
     {
-        return false;
+        ConfigBlockV1 blockV1 = {};
+        if (!eepromRead(0, reinterpret_cast<uint8_t *>(&blockV1), sizeof(blockV1)))
+        {
+            return false;
+        }
+
+        uint32_t expectedCrc = crc32(reinterpret_cast<const uint8_t *>(&blockV1), sizeof(blockV1) - sizeof(blockV1.crc));
+        if (expectedCrc != blockV1.crc)
+        {
+            return false;
+        }
+
+        Config migrated = config;
+        migrated.referenceVoltage = blockV1.config.referenceVoltage;
+        migrated.adcZeroOffset = blockV1.config.adcZeroOffset;
+        migrated.adcGain = blockV1.config.adcGain;
+        migrated.adcRateMode = 1;
+
+        if (!validateConfigRange(migrated))
+        {
+            return false;
+        }
+
+        config = migrated;
+        return true;
     }
 
-    config = block.config;
-    return true;
+    return false;
 }
 
 void saveConfig()

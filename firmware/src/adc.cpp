@@ -21,6 +21,40 @@ volatile uint32_t last_measurement_idx = 0;
 volatile uint32_t measurements_count = 0;
 volatile uint64_t totalCharge = 0;
 volatile uint32_t pendingDrdyCount = 0;
+AdcCalibrationDiag lastCalibrationDiag = {false, false, false, 0, 0, 0, 0, 0};
+
+void onAdcDataReadyInterrupt();
+
+namespace
+{
+    void attachAdcInterrupt()
+    {
+        attachInterrupt(digitalPinToInterrupt(PIN_DRDY), onAdcDataReadyInterrupt, FALLING);
+    }
+
+    void detachAdcInterrupt()
+    {
+        detachInterrupt(digitalPinToInterrupt(PIN_DRDY));
+    }
+
+    bool applyRateModeToChip(uint8_t mode)
+    {
+        switch (mode)
+        {
+        case 0:
+            ads.setDataRate(ADS1220_DR_LVL_6);
+            return true;
+        case 1:
+            ads.setDataRate(ADS1220_DR_LVL_5);
+            return true;
+        case 2:
+            ads.setDataRate(ADS1220_DR_LVL_4);
+            return true;
+        default:
+            return false;
+        }
+    }
+}
 
 /**
  * ADC data ready interrup handler
@@ -47,7 +81,9 @@ void adcProcessPendingData()
 
         int32_t adcValue = ads.getRawData() - config.adcZeroOffset;
         if (adcValue < 0)
-            adcValue = 0;
+        {
+            adcValue = -adcValue;
+        }
 
         int32_t current = int32_t(convertRawToCurrent_uA(adcValue));
 
@@ -82,7 +118,7 @@ bool adcInit()
     ads.setDrdyMode(ADS1220_DRDY);
 
     pinMode(PIN_DRDY, INPUT_PULLUP);
-    attachInterrupt(PIN_DRDY, onAdcDataReadyInterrupt, FALLING);
+    attachAdcInterrupt();
 
     return true;
 }
@@ -93,8 +129,53 @@ void adcConfig()
     ads.setVRefSource(ADS1220_VREF_INT);
 
     ads.setGain(ADS1220_GAIN_1);
+}
 
-    ads.setDataRate(ADS1220_DR_LVL_6);
+void adcApplyConfig()
+{
+    if (!applyRateModeToChip(config.adcRateMode))
+    {
+        config.adcRateMode = 1;
+        applyRateModeToChip(config.adcRateMode);
+    }
+}
+
+bool adcSetRateMode(uint8_t mode)
+{
+    if (mode > 2)
+    {
+        return false;
+    }
+
+    if (config.adcRateMode == mode)
+    {
+        return true;
+    }
+
+    config.adcRateMode = mode;
+    if (!applyRateModeToChip(config.adcRateMode))
+    {
+        config.adcRateMode = 1;
+        applyRateModeToChip(config.adcRateMode);
+        return false;
+    }
+
+    adcResetData();
+    return true;
+}
+
+uint8_t adcGetRateMode()
+{
+    return config.adcRateMode;
+}
+
+void adcGetLastCalibrationDiag(AdcCalibrationDiag *out)
+{
+    if (out == nullptr)
+    {
+        return;
+    }
+    *out = lastCalibrationDiag;
 }
 
 void adcResetData()
@@ -124,48 +205,33 @@ void adcResetData()
 
 bool adcCalibrateZeroOffset(uint16_t sampleCount)
 {
+    lastCalibrationDiag.valid = true;
+    lastCalibrationDiag.success = false;
+    lastCalibrationDiag.timeout = false;
+    lastCalibrationDiag.sampleCount = sampleCount;
+    lastCalibrationDiag.minRaw = 0;
+    lastCalibrationDiag.maxRaw = 0;
+    lastCalibrationDiag.span = 0;
+    lastCalibrationDiag.offset = config.adcZeroOffset;
+
     if (sampleCount == 0)
     {
         return false;
     }
 
-    detachInterrupt(PIN_DRDY);
+    detachAdcInterrupt();
 
     int64_t sum = 0;
     int32_t minRaw = INT32_MAX;
     int32_t maxRaw = INT32_MIN;
 
-    auto waitForDataReady = []() -> bool
-    {
-        uint32_t startedAt = millis();
-        while (digitalRead(PIN_DRDY) != LOW)
-        {
-            if ((millis() - startedAt) > 30)
-            {
-                return false;
-            }
-        }
-        return true;
-    };
-
     for (uint8_t i = 0; i < 16; i++)
     {
-        if (!waitForDataReady())
-        {
-            attachInterrupt(PIN_DRDY, onAdcDataReadyInterrupt, FALLING);
-            return false;
-        }
         (void)ads.getRawData();
     }
 
     for (uint16_t i = 0; i < sampleCount; i++)
     {
-        if (!waitForDataReady())
-        {
-            attachInterrupt(PIN_DRDY, onAdcDataReadyInterrupt, FALLING);
-            return false;
-        }
-
         int32_t raw = ads.getRawData();
         sum += raw;
 
@@ -179,9 +245,13 @@ bool adcCalibrateZeroOffset(uint16_t sampleCount)
         }
     }
 
-    attachInterrupt(PIN_DRDY, onAdcDataReadyInterrupt, FALLING);
+    attachAdcInterrupt();
 
     int32_t span = maxRaw - minRaw;
+    lastCalibrationDiag.minRaw = minRaw;
+    lastCalibrationDiag.maxRaw = maxRaw;
+    lastCalibrationDiag.span = span;
+
     constexpr int32_t maxAllowedSpan = 5000;
     if (span > maxAllowedSpan)
     {
@@ -189,6 +259,8 @@ bool adcCalibrateZeroOffset(uint16_t sampleCount)
     }
 
     config.adcZeroOffset = int32_t(sum / sampleCount);
+    lastCalibrationDiag.offset = config.adcZeroOffset;
+    lastCalibrationDiag.success = true;
     adcResetData();
     return true;
 }

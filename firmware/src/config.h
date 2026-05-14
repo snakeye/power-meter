@@ -26,6 +26,7 @@ struct Config
     int32_t referenceVoltage; // milliVolts
     int32_t adcZeroOffset;
     int32_t adcGain;
+    uint8_t adcRateMode;
 };
 
 extern Config config;
