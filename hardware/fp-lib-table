@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "power-meter")(type "KiCad")(uri "${KIPRJMOD}/power-meter.pretty")(options "")(descr ""))
+)
