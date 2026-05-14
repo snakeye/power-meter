@@ -83,7 +83,12 @@ void adcConfig()
 
 void adcResetData()
 {
-    tsStart = millis();
+    uint32_t nowMs = millis();
+    uint64_t nowUs = get64bitMicros();
+
+    noInterrupts();
+
+    tsStart = nowMs;
 
     for (size_t i = 0; i < measurements_buffer_size; i++)
     {
@@ -93,9 +98,11 @@ void adcResetData()
     last_measurement_idx = 0;
     measurements_count = 0;
 
-    tsLastMeasurement = get64bitMicros();
+    tsLastMeasurement = nowUs;
 
     totalCharge = 0;
+
+    interrupts();
 }
 
 bool adcCalibrateZeroOffset(uint16_t sampleCount)

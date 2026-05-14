@@ -43,10 +43,24 @@ void displayUpdate()
     int64_t sum = 0;
     int32_t max = 0;
 
-    size_t cnt = MIN(measurements_buffer_size, measurements_count);
+    uint32_t safeMeasurementsCount = 0;
+    uint64_t safeTotalCharge = 0;
+    int64_t safeMeasurements[measurements_buffer_size] = {0};
+
+    noInterrupts();
+    safeMeasurementsCount = measurements_count;
+    safeTotalCharge = totalCharge;
+    size_t safeCnt = MIN(measurements_buffer_size, safeMeasurementsCount);
+    for (size_t i = 0; i < safeCnt; i++)
+    {
+        safeMeasurements[i] = measurements[i];
+    }
+    interrupts();
+
+    size_t cnt = MIN(measurements_buffer_size, safeMeasurementsCount);
     for (size_t i = 0; i < cnt; i++)
     {
-        int32_t m = measurements[i];
+        int32_t m = safeMeasurements[i];
         sum += m;
         if (m > max)
         {
@@ -73,7 +87,7 @@ void displayUpdate()
     //
 
     u8g2.setCursor(0, 48);
-    uint32_t deciMah = (uint32_t)(totalCharge / 360000000000ULL);
+    uint32_t deciMah = (uint32_t)(safeTotalCharge / 360000000000ULL);
     uint32_t wholeMah = deciMah / 10;
     uint32_t fracMah = deciMah % 10;
     u8g2.printf("%lu.%01lu mAh", (unsigned long)wholeMah, (unsigned long)fracMah);
