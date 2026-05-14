@@ -14,7 +14,7 @@ ADS1220_WE ads = ADS1220_WE(&adsSPI, PIN_CS, PIN_DRDY);
 uint32_t tsStart = 0;
 
 volatile uint32_t tsLastMeasurement = 0;
-volatile int64_t measurements[measurements_buffer_size] = {0};
+volatile int32_t measurements[measurements_buffer_size] = {0};
 volatile uint32_t intervals[measurements_buffer_size] = {0};
 
 volatile uint32_t last_measurement_idx = 0;
@@ -49,7 +49,7 @@ void adcProcessPendingData()
         if (adcValue < 0)
             adcValue = 0;
 
-        int64_t current = convertRawToCurrent_uA(adcValue);
+        int32_t current = int32_t(convertRawToCurrent_uA(adcValue));
 
         measurements[last_measurement_idx] = current;
 

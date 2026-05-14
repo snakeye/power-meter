@@ -4,7 +4,7 @@
 
 constexpr uint32_t measurements_buffer_size = 20;
 
-extern volatile int64_t measurements[];
+extern volatile int32_t measurements[];
 extern volatile uint32_t intervals[];
 
 extern volatile uint32_t last_measurement_idx;

@@ -45,7 +45,7 @@ void displayUpdate()
 
     uint32_t safeMeasurementsCount = 0;
     uint64_t safeTotalCharge = 0;
-    int64_t safeMeasurements[measurements_buffer_size] = {0};
+    int32_t safeMeasurements[measurements_buffer_size] = {0};
 
     noInterrupts();
     safeMeasurementsCount = measurements_count;
