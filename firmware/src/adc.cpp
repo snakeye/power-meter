@@ -97,3 +97,74 @@ void adcResetData()
 
     totalCharge = 0;
 }
+
+bool adcCalibrateZeroOffset(uint16_t sampleCount)
+{
+    if (sampleCount == 0)
+    {
+        return false;
+    }
+
+    detachInterrupt(PIN_DRDY);
+
+    int64_t sum = 0;
+    int32_t minRaw = INT32_MAX;
+    int32_t maxRaw = INT32_MIN;
+
+    auto waitForDataReady = []() -> bool
+    {
+        uint32_t startedAt = millis();
+        while (digitalRead(PIN_DRDY) != LOW)
+        {
+            if ((millis() - startedAt) > 30)
+            {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    for (uint8_t i = 0; i < 16; i++)
+    {
+        if (!waitForDataReady())
+        {
+            attachInterrupt(PIN_DRDY, onAdcDataReadyInterrupt, FALLING);
+            return false;
+        }
+        (void)ads.getRawData();
+    }
+
+    for (uint16_t i = 0; i < sampleCount; i++)
+    {
+        if (!waitForDataReady())
+        {
+            attachInterrupt(PIN_DRDY, onAdcDataReadyInterrupt, FALLING);
+            return false;
+        }
+
+        int32_t raw = ads.getRawData();
+        sum += raw;
+
+        if (raw < minRaw)
+        {
+            minRaw = raw;
+        }
+        if (raw > maxRaw)
+        {
+            maxRaw = raw;
+        }
+    }
+
+    attachInterrupt(PIN_DRDY, onAdcDataReadyInterrupt, FALLING);
+
+    int32_t span = maxRaw - minRaw;
+    constexpr int32_t maxAllowedSpan = 5000;
+    if (span > maxAllowedSpan)
+    {
+        return false;
+    }
+
+    config.adcZeroOffset = int32_t(sum / sampleCount);
+    adcResetData();
+    return true;
+}

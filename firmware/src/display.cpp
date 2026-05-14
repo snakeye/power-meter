@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <string.h>
 
 #include "config.h"
 #include "display.h"
@@ -10,11 +11,24 @@ typedef U8G2_SSD1306_128X64_NONAME_F_HW_I2C Display;
 
 Display u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE, /* clock=*/PIN_I2C_SCL, /* data=*/PIN_I2C_SDA);
 
+namespace
+{
+    char statusText[12] = "";
+    uint32_t statusUntilMs = 0;
+}
+
 void displayInit()
 {
     u8g2.begin();
     u8g2.setPowerSave(0);
     u8g2.setFontMode(1);
+}
+
+void displayShowStatus(const char *status, uint32_t durationMs)
+{
+    strncpy(statusText, status, sizeof(statusText) - 1);
+    statusText[sizeof(statusText) - 1] = '\0';
+    statusUntilMs = millis() + durationMs;
 }
 
 void displayUpdate()
@@ -66,7 +80,14 @@ void displayUpdate()
 
     //
     u8g2.setCursor(0, 64);
-    u8g2.printf("%02d:%02d:%02d", hours, minutes, seconds);
+    if (statusUntilMs != 0 && now < statusUntilMs)
+    {
+        u8g2.printf("%s", statusText);
+    }
+    else
+    {
+        u8g2.printf("%02d:%02d:%02d", hours, minutes, seconds);
+    }
 
     //
     u8g2.sendBuffer();
