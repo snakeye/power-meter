@@ -19,10 +19,24 @@ OneButton btnB;
 void onBtnAClick()
 {
     adcResetData();
+    displayShowStatus("RESET");
 }
 
 void onBtnBClick()
 {
+}
+
+void onBtnBLongPress()
+{
+    if (adcCalibrateZeroOffset(128))
+    {
+        saveConfig();
+        displayShowStatus("CAL SAVED", 2000);
+    }
+    else
+    {
+        displayShowStatus("CAL FAIL", 2000);
+    }
 }
 
 void setup()
@@ -42,6 +56,8 @@ void setup()
 
     btnB.setup(PIN_BTN_B, INPUT_PULLDOWN, false);
     btnB.attachClick(onBtnBClick);
+    btnB.setPressMs(2000);
+    btnB.attachLongPressStart(onBtnBLongPress);
 
     //
     loadConfig();
@@ -54,6 +70,8 @@ void loop()
 {
     btnA.tick();
     btnB.tick();
+
+    adcProcessPendingData();
 
     RecurringTask::interval(100, displayUpdate);
 }

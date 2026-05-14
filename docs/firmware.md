@@ -61,7 +61,7 @@ Data kept in global state:
 - Computes average current over available ring buffer entries.
 - Renders:
   - average current in `mA` with one decimal
-  - charge estimate in `mAh` (from `totalCharge`)
+  - charge estimate in `mAh` with one decimal (from `totalCharge` in `uA*us`)
   - elapsed time as `HH:MM:SS`
 
 Refresh cadence is controlled externally from `loop()` at 100 ms.
@@ -81,8 +81,18 @@ Refresh cadence is controlled externally from `loop()` at 100 ms.
   - `referenceVoltage = 2048` mV
   - `adcZeroOffset = 5600`
   - `adcGain = 1`
-- `loadConfig()` currently returns `false` and does not load EEPROM data.
-- `saveConfig()` is empty.
+- Uses external I2C EEPROM `M24C02` at address `0x50` (A0/A1/A2 tied to GND).
+- Stores config as a versioned block with CRC32 validation.
+- `loadConfig()` reads from EEPROM, validates header/ranges/CRC, and falls back to defaults on failure.
+- `saveConfig()` writes config using 8-byte page writes with ACK polling.
+
+Stored block layout:
+
+- `magic` (`0x504D4346`)
+- `version` (`1`)
+- `reserved`
+- `Config`
+- `crc32` (computed over all previous bytes in block)
 
 ## Pin mapping
 
@@ -95,7 +105,5 @@ Defined in `firmware/src/config.h`:
 
 ## Known limitations
 
-- Persistent configuration is not implemented.
 - UI and ISR share state without explicit snapshot synchronization.
-- Charge accumulation math should be reviewed and validated against target units.
 - ADC error handling/recovery paths are minimal.

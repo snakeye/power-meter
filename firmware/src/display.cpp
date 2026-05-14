@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <string.h>
 
 #include "config.h"
 #include "display.h"
@@ -10,11 +11,24 @@ typedef U8G2_SSD1306_128X64_NONAME_F_HW_I2C Display;
 
 Display u8g2(U8G2_R0, /* reset=*/U8X8_PIN_NONE, /* clock=*/PIN_I2C_SCL, /* data=*/PIN_I2C_SDA);
 
+namespace
+{
+    char statusText[12] = "";
+    uint32_t statusUntilMs = 0;
+}
+
 void displayInit()
 {
     u8g2.begin();
     u8g2.setPowerSave(0);
     u8g2.setFontMode(1);
+}
+
+void displayShowStatus(const char *status, uint32_t durationMs)
+{
+    strncpy(statusText, status, sizeof(statusText) - 1);
+    statusText[sizeof(statusText) - 1] = '\0';
+    statusUntilMs = millis() + durationMs;
 }
 
 void displayUpdate()
@@ -29,10 +43,24 @@ void displayUpdate()
     int64_t sum = 0;
     int32_t max = 0;
 
-    size_t cnt = MIN(measurements_buffer_size, measurements_count);
+    uint32_t safeMeasurementsCount = 0;
+    uint64_t safeTotalCharge = 0;
+    int32_t safeMeasurements[measurements_buffer_size] = {0};
+
+    noInterrupts();
+    safeMeasurementsCount = measurements_count;
+    safeTotalCharge = totalCharge;
+    size_t safeCnt = MIN(measurements_buffer_size, safeMeasurementsCount);
+    for (size_t i = 0; i < safeCnt; i++)
+    {
+        safeMeasurements[i] = measurements[i];
+    }
+    interrupts();
+
+    size_t cnt = MIN(measurements_buffer_size, safeMeasurementsCount);
     for (size_t i = 0; i < cnt; i++)
     {
-        int32_t m = measurements[i];
+        int32_t m = safeMeasurements[i];
         sum += m;
         if (m > max)
         {
@@ -59,11 +87,21 @@ void displayUpdate()
     //
 
     u8g2.setCursor(0, 48);
-    u8g2.printf("%d mAh", totalCharge / (3600 * 1000));
+    uint32_t deciMah = (uint32_t)(safeTotalCharge / 360000000000ULL);
+    uint32_t wholeMah = deciMah / 10;
+    uint32_t fracMah = deciMah % 10;
+    u8g2.printf("%lu.%01lu mAh", (unsigned long)wholeMah, (unsigned long)fracMah);
 
     //
     u8g2.setCursor(0, 64);
-    u8g2.printf("%02d:%02d:%02d", hours, minutes, seconds);
+    if (statusUntilMs != 0 && now < statusUntilMs)
+    {
+        u8g2.printf("%s", statusText);
+    }
+    else
+    {
+        u8g2.printf("%02d:%02d:%02d", hours, minutes, seconds);
+    }
 
     //
     u8g2.sendBuffer();
