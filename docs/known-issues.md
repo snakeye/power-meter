@@ -7,7 +7,7 @@ This file tracks confirmed firmware/hardware behavior problems with measurable i
 ### PM-FW-001 - Incorrect charge integration formula
 
 - Severity: Critical
-- Status: Open
+- Status: Fixed, pending bench validation
 - Affected files: `firmware/src/adc.cpp`
 
 Symptom:
@@ -33,6 +33,11 @@ Fix direction:
 - Replace integration step with multiplication: `Q += I * dt`.
 - Keep units explicit and consistent (`uA`, `us`, `uA*us`).
 
+Fix applied:
+
+- `firmware/src/adc.cpp` now accumulates as `totalCharge += uint64_t(current) * uint64_t(tsDiff)`.
+- Commit: `a1aa619`.
+
 Acceptance criteria:
 
 - Charge accumulation remains stable when ADC data rate (SPS) changes.
@@ -43,7 +48,7 @@ Acceptance criteria:
 ### PM-FW-002 - Wrong conversion factor from `uA*us` to `mAh`
 
 - Severity: Critical
-- Status: Open
+- Status: Fixed, pending bench validation
 - Affected files: `firmware/src/display.cpp`
 
 Symptom:
@@ -62,6 +67,11 @@ Fix direction:
 
 - Use `mAh = totalCharge / 3600000000000ULL` when `totalCharge` is kept in `uA*us`.
 
+Fix applied:
+
+- `firmware/src/display.cpp` now uses `uA*us` scaling and displays `mAh` with one decimal using integer math (`deci-mAh`).
+- Commit: `a1aa619` (+ post-commit UI precision update).
+
 Acceptance criteria:
 
 - Calculated capacity matches reference integration from logged current/time pairs.
@@ -71,7 +81,7 @@ Acceptance criteria:
 ### PM-FW-003 - Incorrect `printf` format for 64-bit value
 
 - Severity: High
-- Status: Open
+- Status: Fixed, pending bench validation
 - Affected files: `firmware/src/display.cpp`
 
 Symptom:
@@ -92,6 +102,11 @@ Fix direction:
 - Format with a type-compatible specifier or convert to a safe display type first.
 - Recommended display path: compute `uint32_t mAh` after division, print as unsigned long-compatible argument.
 
+Fix applied:
+
+- Display path now prints pre-scaled 32-bit values with unsigned formatting.
+- Commit: `a1aa619`.
+
 Acceptance criteria:
 
 - Output remains correct with multiple arguments in a single `printf` call.
@@ -102,7 +117,7 @@ Acceptance criteria:
 ### PM-FW-004 - Integer truncation sensitivity in old algorithm
 
 - Severity: High
-- Status: Open
+- Status: Fixed
 - Affected files: `firmware/src/adc.cpp`
 
 Symptom:
@@ -121,6 +136,12 @@ Fix direction:
 
 - Remove division-based integrator.
 - Preserve precision in 64-bit intermediate math when multiplying `current * tsDiff`.
+
+Fix applied:
+
+- Division-based integration removed.
+- 64-bit multiplication is used for charge accumulation.
+- Commit: `a1aa619`.
 
 Acceptance criteria:
 

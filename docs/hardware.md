@@ -9,7 +9,25 @@ Hardware design files are stored in `hardware/` and maintained in KiCad format.
 - 0.1 Ohm shunt resistor (100 mOhm)
 - STM32 microcontroller (firmware currently targets STM32G431C8)
 - 128x64 I2C OLED display (SSD1306 compatible)
+- M24C02 external I2C EEPROM for config persistence
 - Two user buttons (A/B)
+
+## External EEPROM (M24C02)
+
+Configuration persistence uses a discrete `M24C02` connected to the main I2C bus.
+
+- Device type: `M24C02` (`2 Kbit = 256 bytes`)
+- I2C base address: `0x50`
+- Address pins: `A0/A1/A2 -> GND` (fixed address `0x50`)
+- Typical page size: `8 bytes` (page write boundary must be respected)
+
+Firmware write behavior:
+
+- Data is split into 8-byte page writes.
+- After each page write, firmware waits for device ready using ACK polling.
+- Config data includes CRC32 to detect corruption.
+
+Because OLED display shares the same I2C bus, EEPROM writes should remain infrequent (configuration or calibration events only).
 
 ## Measurement chain and equations
 
