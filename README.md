@@ -3,6 +3,10 @@
 Power Meter is a microcontroller-based current consumption meter.
 It samples current with an external ADC, computes rolling values in firmware, and displays live readings on a small OLED screen.
 
+![The device](docs/pic1.jpeg)
+
+![PCB](docs/pic2.jpeg)
+
 This repository is organized around two parts:
 - `firmware/` - PlatformIO project with STM32 firmware
 - `hardware/` - KiCad schematic/PCB and symbol/footprint libraries
